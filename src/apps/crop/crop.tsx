@@ -8,10 +8,10 @@ export const crop = defineCommand((program) => {
   program
     .command('crop')
     .argument('<path>', 'Directory or file to crop')
-    .action((path) => {
+    .action((inputPath) => {
       render(
         <ErrorBoundaryProvider>
-          <CropManager path={path} />
+          <CropManager inputPath={inputPath} />
         </ErrorBoundaryProvider>,
       );
     });
