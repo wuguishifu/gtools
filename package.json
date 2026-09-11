@@ -1,10 +1,32 @@
 {
+  "name": "@wuguishifu/gtools",
+  "version": "0.0.0",
+  "description": "A collection of command line tools.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wuguishifu/gtools.git"
+  },
   "type": "module",
+  "bin": {
+    "gtools": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@10.2.0",
   "scripts": {
     "dev": "tsx src/index.ts",
+    "build": "bun build src/index.ts --target=node --outdir dist --packages external --banner '#!/usr/bin/env node'",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "commander": "^15.0.0",

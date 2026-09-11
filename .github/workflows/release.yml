@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version-bump-type:
+        description: Version bump type
+        required: false
+        type: choice
+        default: patch
+        options:
+          - major
+          - minor
+          - patch
+      dry-run:
+        description: Preview changes without publishing
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# id-token: write enables npm trusted publishing (OIDC) — no npm token needed.
+# The package must have this repo + workflow filename configured as a trusted
+# publisher on npmjs.com (package Settings -> Trusted Publisher).
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: update npm (trusted publishing needs npm >= 11.5.1)
+        run: npm install -g npm@latest
+
+      - name: install deps
+        run: pnpm i --frozen-lockfile
+
+      - name: verify formatting
+        run: pnpm format:check
+
+      - name: bump version
+        id: version
+        run: |
+          ./scripts/versioning/version-bump.sh \
+            ${{ inputs.version-bump-type }}
+
+      - name: update package version
+        run: |
+          ./scripts/versioning/set-package-version.sh \
+            ${{ steps.version.outputs.version }}
+
+      - name: build
+        run: pnpm build
+
+      # husky is a dev-only hook installer; shipping it as a lifecycle script
+      # makes npm warn consumers about install scripts on every install.
+      - name: strip dev-only prepare script
+        run: npm pkg delete scripts.prepare
+
+      - name: publish to npm
+        run: npm publish ${{ inputs.dry-run && '--dry-run' || '' }}
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'
+
+      - name: create github release
+        if: ${{ !inputs.dry-run }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: gtools v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
