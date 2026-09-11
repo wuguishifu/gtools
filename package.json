@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "test": "tsx src/index.ts"
+    "dev": "tsx src/index.ts"
   },
   "dependencies": {
     "commander": "^15.0.0",

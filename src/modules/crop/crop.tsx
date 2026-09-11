@@ -1,11 +1,17 @@
-import { render, Text } from 'ink';
+import { render } from 'ink';
 import { defineCommand } from '../program/program';
+import { CropManager } from './crop-manager';
+import { ErrorBoundaryProvider } from '../error/error-boundary-provider';
 
 export const crop = defineCommand((program) => {
   program
     .command('crop')
     .argument('<path>', 'Directory or file to crop')
     .action((path) => {
-      render(<Text>hello world {path}</Text>);
+      render(
+        <ErrorBoundaryProvider>
+          <CropManager path={path} />
+        </ErrorBoundaryProvider>,
+      );
     });
 });
