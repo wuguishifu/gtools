@@ -1,7 +1,8 @@
 import { render } from 'ink';
+
+import { ErrorBoundaryProvider } from '../error/error-boundary-provider';
 import { defineCommand } from '../program/program';
 import { CropManager } from './crop-manager';
-import { ErrorBoundaryProvider } from '../error/error-boundary-provider';
 
 export const crop = defineCommand((program) => {
   program

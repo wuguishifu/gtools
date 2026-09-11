@@ -1,5 +1,6 @@
 import { Text } from 'ink';
 import { PropsWithChildren } from 'react';
+
 import { createStore, useStore } from '../store/store';
 import { ImmediateExit } from './immediate-exit';
 
