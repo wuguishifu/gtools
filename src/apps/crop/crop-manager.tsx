@@ -1,7 +1,6 @@
+import { fatal } from '@/global/error/error-boundary-provider';
 import fs from 'fs';
 import { useEffect, useRef } from 'react';
-
-import { fatal } from '../error/error-boundary-provider';
 
 type CropManagerProps = {
   path: string;

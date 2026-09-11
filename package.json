@@ -1,7 +1,10 @@
 {
   "type": "module",
   "scripts": {
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "prepare": "husky"
   },
   "dependencies": {
     "commander": "^15.0.0",
@@ -12,6 +15,7 @@
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/node": "^22.20.2",
     "@types/react": "^19.3.0",
+    "husky": "^9.1.7",
     "prettier": "^3.9.6",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
