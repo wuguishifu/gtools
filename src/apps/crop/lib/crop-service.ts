@@ -1,6 +1,6 @@
+import { getImageBackend } from '@/global/image/resolve-backend';
 import fs from 'fs';
 import path from 'path';
-import sharp from 'sharp';
 
 import { cropStoreActions } from './crop-store';
 import { identifierService } from './identifier-service';
@@ -9,6 +9,10 @@ const IMAGE_PATTERN = /\.(png|jpe?g|webp)$/i;
 
 class CropService {
   public async crop(inputPath: string) {
+    // Resolved up front so a missing backend surfaces as one clear error
+    // instead of an identical failure recorded against every file.
+    await getImageBackend();
+
     const stats = fs.lstatSync(inputPath);
 
     if (stats.isFile()) {
@@ -53,12 +57,9 @@ class CropService {
   }
 
   public async cropImage(input: string, output: string) {
-    const source = sharp(input).removeAlpha();
+    const backend = await getImageBackend();
 
-    const {
-      data,
-      info: { width, height, channels },
-    } = await source.clone().raw().toBuffer({ resolveWithObject: true });
+    const { data, width, height, channels } = await backend.readRaw(input);
 
     const runs = identifierService.identifyBorders({
       data,
@@ -73,14 +74,14 @@ class CropService {
       throw new Error('could not detect photo borders');
     }
 
-    await sharp(input)
-      .extract({
-        left: 0,
-        top: bounds.top,
-        width,
-        height: bounds.bottom - bounds.top,
-      })
-      .toFile(output);
+    await backend.extract({
+      input,
+      output,
+      left: 0,
+      top: bounds.top,
+      width,
+      height: bounds.bottom - bounds.top,
+    });
   }
 
   private async processFile(input: string, output: string) {

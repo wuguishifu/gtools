@@ -5,4 +5,4 @@ const commands: CommandModule[] = [crop];
 
 for (const register of commands) register(program);
 
-program.parse();
+await program.parseAsync();

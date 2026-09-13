@@ -1,6 +1,6 @@
 {
   "name": "@wuguishifu/gtools",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "A collection of command line tools.",
   "license": "MIT",
   "repository": {
@@ -23,15 +23,19 @@
   "packageManager": "pnpm@10.2.0",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "bun build src/index.ts --target=node --outdir dist --packages external --banner '#!/usr/bin/env node'",
+    "build": "./scripts/build/npm.sh",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "build:binary": "./scripts/build/binary.sh",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "commander": "^15.0.0",
     "ink": "^7.1.1",
-    "react": "^19.3.0",
+    "react": "^19.3.0"
+  },
+  "optionalDependencies": {
     "sharp": "^0.35.4"
   },
   "devDependencies": {
@@ -40,6 +44,7 @@
     "@types/react": "^19.3.0",
     "husky": "^9.1.7",
     "prettier": "^3.9.6",
+    "react-devtools-core": "^8.0.0",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   }

@@ -19,10 +19,15 @@ export function CropManager({ inputPath }: CropManagerProps) {
     if (!fs.existsSync(inputPathRef.current))
       return fatal('file or directory does not exist');
 
-    cropService.crop(inputPathRef.current).then(() => {
-      if (cropStore.getState().failures.length > 0) process.exitCode = 1;
-      exit();
-    });
+    cropService
+      .crop(inputPathRef.current)
+      .then(() => {
+        if (cropStore.getState().failures.length > 0) process.exitCode = 1;
+        exit();
+      })
+      .catch((error) =>
+        fatal(error instanceof Error ? error.message : String(error)),
+      );
   }, [exit]);
 
   return <CropProgress />;

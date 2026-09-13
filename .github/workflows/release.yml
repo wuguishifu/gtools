@@ -30,13 +30,82 @@ permissions:
   id-token: write
 
 jobs:
-  release:
+  version:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: bump version
+        id: version
+        run: |
+          ./scripts/versioning/version-bump.sh \
+            ${{ inputs.version-bump-type }}
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: bun-linux-x64
+            outfile: gtools-linux-x64
+          - target: bun-linux-arm64
+            outfile: gtools-linux-arm64
+          - target: bun-windows-x64
+            outfile: gtools-windows-x64.exe
+          - target: bun-darwin-x64
+            outfile: gtools-macos-x64
+          - target: bun-darwin-arm64
+            outfile: gtools-macos-arm64
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: install deps
+        run: pnpm i --frozen-lockfile
+
+      - name: update package version
+        run: |
+          ./scripts/versioning/set-package-version.sh \
+            ${{ needs.version.outputs.version }}
+
+      - name: compile binary
+        run: |
+          ./scripts/build/binary.sh \
+            ${{ matrix.target }} \
+            ${{ matrix.outfile }}
+
+      - name: upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.outfile }}
+          path: ${{ matrix.outfile }}
+          retention-days: 1
+
+  publish:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
 
       - name: setup pnpm
         uses: pnpm/action-setup@v4
@@ -59,16 +128,13 @@ jobs:
       - name: verify formatting
         run: pnpm format:check
 
-      - name: bump version
-        id: version
-        run: |
-          ./scripts/versioning/version-bump.sh \
-            ${{ inputs.version-bump-type }}
+      - name: typecheck
+        run: pnpm typecheck
 
       - name: update package version
         run: |
           ./scripts/versioning/set-package-version.sh \
-            ${{ steps.version.outputs.version }}
+            ${{ needs.version.outputs.version }}
 
       - name: build
         run: pnpm build
@@ -83,12 +149,39 @@ jobs:
         env:
           NPM_CONFIG_PROVENANCE: 'true'
 
-      - name: create github release
-        if: ${{ !inputs.dry-run }}
+  release:
+    needs: [version, build, publish]
+    if: ${{ !inputs.dry-run }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: publish binaries to github release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: gtools v${{ steps.version.outputs.version }}
+          tag_name: v${{ needs.version.outputs.version }}
+          name: gtools v${{ needs.version.outputs.version }}
+          files: artifacts/*
           generate_release_notes: true
           draft: false
           prerelease: false
+
+      - name: delete temporary actions artifacts
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+            --paginate \
+            --jq '.artifacts[].id' |
+          while read artifact_id; do
+            echo "Deleting artifact $artifact_id"
+            gh api \
+              --method DELETE \
+              repos/${{ github.repository }}/actions/artifacts/$artifact_id
+          done
