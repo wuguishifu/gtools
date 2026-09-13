@@ -23,6 +23,6 @@ bun build src/index.ts \
   --target="$TARGET" \
   --outfile "$OUTFILE" \
   --external sharp \
-  --define "process.env.GTOOLS_VERSION=\"$VERSION\""
+  --define "process.env.GTOOLS_BUILD_VERSION=\"$VERSION\""
 
 echo "Built $OUTFILE"

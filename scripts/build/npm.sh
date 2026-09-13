@@ -16,6 +16,6 @@ bun build src/index.ts \
   --outdir dist \
   --packages external \
   --banner '#!/usr/bin/env node' \
-  --define "process.env.GTOOLS_VERSION=\"$VERSION\""
+  --define "process.env.GTOOLS_BUILD_VERSION=\"$VERSION\""
 
 echo "Built dist/index.js"

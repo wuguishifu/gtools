@@ -22,12 +22,9 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-# id-token: write enables npm trusted publishing (OIDC) — no npm token needed.
-# The package must have this repo + workflow filename configured as a trusted
-# publisher on npmjs.com (package Settings -> Trusted Publisher).
+# Least privilege by default; the two jobs that need more grant it themselves.
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
   version:
@@ -103,6 +100,12 @@ jobs:
   publish:
     needs: version
     runs-on: ubuntu-latest
+    # id-token: write enables npm trusted publishing (OIDC) — no npm token
+    # needed. The package must have this repo + workflow filename configured as
+    # a trusted publisher on npmjs.com (package Settings -> Trusted Publisher).
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -153,6 +156,11 @@ jobs:
     needs: [version, build, publish]
     if: ${{ !inputs.dry-run }}
     runs-on: ubuntu-latest
+    # contents: write creates the release and its tag; actions: write is
+    # required to delete the intermediate build artifacts afterwards.
+    permissions:
+      contents: write
+      actions: write
     steps:
       - name: download artifacts
         uses: actions/download-artifact@v4
