@@ -7,6 +7,7 @@ import { CropManager } from './crop-manager';
 export const crop = defineCommand((program) => {
   program
     .command('crop')
+    .description('Tools for cropping screenshots')
     .argument('<path>', 'Directory or file to crop')
     .option('--verbose', 'report per-file decode and border detection details')
     .action((inputPath, options: { verbose?: boolean }) => {
