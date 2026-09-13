@@ -15,7 +15,13 @@ async function vips(args: string[]) {
   return stdout.trim();
 }
 
-type Header = { width: number; height: number; bands: number };
+type Header = {
+  width: number;
+  height: number;
+  bands: number;
+  format: string;
+  interpretation: string;
+};
 
 /**
  * One `vipsheader -a` rather than three `-f` calls. Each spawn is comparatively
@@ -24,27 +30,23 @@ type Header = { width: number; height: number; bands: number };
 async function header(input: string): Promise<Header> {
   const { stdout } = await run('vipsheader', ['-a', input]);
 
-  const read = (field: keyof Header) => {
-    const match = stdout.match(new RegExp(`^${field}: (\\d+)$`, 'm'));
+  const field = (name: string, pattern: string) => {
+    const match = stdout.match(new RegExp(`^${name}: (${pattern})$`, 'm'));
 
     if (!match) {
-      throw new Error(`vipsheader did not report ${field} for ${input}`);
+      throw new Error(`vipsheader did not report ${name} for ${input}`);
     }
 
-    return Number(match[1]);
+    return match[1];
   };
 
-  return { width: read('width'), height: read('height'), bands: read('bands') };
-}
-
-/**
- * Mirrors sharp's removeAlpha(): drop the trailing alpha band, leaving
- * greyscale and RGB images untouched.
- */
-function bandsWithoutAlpha(bands: number) {
-  if (bands === 2) return 1;
-  if (bands === 4) return 3;
-  return bands;
+  return {
+    width: Number(field('width', '\\d+')),
+    height: Number(field('height', '\\d+')),
+    bands: Number(field('bands', '\\d+')),
+    format: field('format', '\\S+'),
+    interpretation: field('interpretation', '\\S+'),
+  };
 }
 
 /**
@@ -59,6 +61,19 @@ function saveOptions(output: string) {
   return '';
 }
 
+/** Matches sharp's removeAlpha() on the sRGB buffer vips hands back. */
+function dropAlpha(raw: Buffer, pixels: number) {
+  const out = Buffer.allocUnsafe(pixels * 3);
+
+  for (let p = 0, from = 0, to = 0; p < pixels; p++, from += 4, to += 3) {
+    out[to] = raw[from];
+    out[to + 1] = raw[from + 1];
+    out[to + 2] = raw[from + 2];
+  }
+
+  return out;
+}
+
 export async function loadVipsBackend(): Promise<ImageBackend> {
   const version = await vips(['--version']);
 
@@ -67,37 +82,43 @@ export async function loadVipsBackend(): Promise<ImageBackend> {
     description: `${version} CLI`,
 
     async readRaw(input) {
-      const { width, height, bands } = await header(input);
-
-      const channels = bandsWithoutAlpha(bands);
+      const meta = await header(input);
+      const { width, height } = meta;
 
       // vips cannot stream rawsave to stdout, so round-trip through a temp file.
       const scratch = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'gtools-'),
       );
-      // The .raw suffix matters: extract_band infers its output format from
-      // the filename, and an extensionless path is rejected outright.
+      // The .raw suffix matters: vips infers the output format from the
+      // filename, and an extensionless path is rejected outright.
       const target = path.join(scratch, 'image.raw');
 
       try {
-        if (channels === bands) {
-          await vips(['rawsave', input, target]);
-        } else {
-          await vips([
-            'extract_band',
-            input,
-            target,
-            '0',
-            '--n',
-            String(channels),
-          ]);
+        // colourspace, not rawsave: rawsave dumps the image at its native
+        // depth, so a 16-bit source (ushort/rgb16, common in phone
+        // screenshots) writes two bytes per sample and every subsequent
+        // 8-bit index is misaligned. Converting to sRGB first normalises
+        // depth and interpretation the way sharp's .raw() does, and is a
+        // no-op for images that are already 8-bit sRGB.
+        await vips(['colourspace', input, target, 'srgb']);
+
+        const raw = await fs.promises.readFile(target);
+        const pixels = width * height;
+        const channels = raw.length / pixels;
+
+        if (!Number.isInteger(channels) || channels < 3 || channels > 4) {
+          throw new Error(
+            `unexpected vips output: ${raw.length} bytes for ${width}x${height} ` +
+              `(${meta.format}, ${meta.bands} bands, ${meta.interpretation})`,
+          );
         }
 
         return {
-          data: await fs.promises.readFile(target),
+          data: channels === 4 ? dropAlpha(raw, pixels) : raw,
           width,
           height,
-          channels,
+          channels: channels === 4 ? 3 : channels,
+          source: `${meta.format} ${meta.bands}-band ${meta.interpretation}`,
         };
       } finally {
         await fs.promises.rm(scratch, { recursive: true, force: true });

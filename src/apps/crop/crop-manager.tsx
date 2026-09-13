@@ -9,18 +9,20 @@ import { cropStore } from './lib/crop-store';
 
 type CropManagerProps = {
   inputPath: string;
+  verbose?: boolean;
 };
 
-export function CropManager({ inputPath }: CropManagerProps) {
+export function CropManager({ inputPath, verbose }: CropManagerProps) {
   const { exit } = useApp();
   const inputPathRef = useRef(inputPath);
+  const verboseRef = useRef(verbose);
 
   useEffect(() => {
     if (!fs.existsSync(inputPathRef.current))
       return fatal('file or directory does not exist');
 
     cropService
-      .crop(inputPathRef.current)
+      .crop(inputPathRef.current, { verbose: verboseRef.current })
       .then(() => {
         if (cropStore.getState().failures.length > 0) process.exitCode = 1;
         exit();

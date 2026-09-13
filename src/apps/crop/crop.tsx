@@ -8,10 +8,11 @@ export const crop = defineCommand((program) => {
   program
     .command('crop')
     .argument('<path>', 'Directory or file to crop')
-    .action((inputPath) => {
+    .option('--verbose', 'report per-file decode and border detection details')
+    .action((inputPath, options: { verbose?: boolean }) => {
       render(
         <ErrorBoundaryProvider>
-          <CropManager inputPath={inputPath} />
+          <CropManager inputPath={inputPath} verbose={options.verbose} />
         </ErrorBoundaryProvider>,
       );
     });

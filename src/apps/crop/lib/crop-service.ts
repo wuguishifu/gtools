@@ -2,16 +2,35 @@ import { getImageBackend } from '@/global/image/resolve-backend';
 import fs from 'fs';
 import path from 'path';
 
-import { cropStoreActions } from './crop-store';
+import { cropStore, cropStoreActions } from './crop-store';
 import { identifierService } from './identifier-service';
 
 const IMAGE_PATTERN = /\.(png|jpe?g|webp)$/i;
 
+const MAX_LISTED_RUNS = 4;
+
+function formatRuns(runs: { start: number; end: number }[]) {
+  if (runs.length === 0) return '';
+
+  const listed = runs
+    .slice(0, MAX_LISTED_RUNS)
+    .map((run) => `${run.start}-${run.end}`)
+    .join(', ');
+
+  const rest = runs.length - MAX_LISTED_RUNS;
+
+  return ` (${listed}${rest > 0 ? `, +${rest} more` : ''})`;
+}
+
 class CropService {
-  public async crop(inputPath: string) {
+  public async crop(inputPath: string, options: { verbose?: boolean } = {}) {
+    cropStoreActions.setVerbose(options.verbose === true);
+
     // Resolved up front so a missing backend surfaces as one clear error
     // instead of an identical failure recorded against every file.
-    await getImageBackend();
+    const backend = await getImageBackend();
+
+    cropStoreActions.setBackend(`${backend.name} · ${backend.description}`);
 
     const stats = fs.lstatSync(inputPath);
 
@@ -58,8 +77,13 @@ class CropService {
 
   public async cropImage(input: string, output: string) {
     const backend = await getImageBackend();
+    const verbose = cropStore.getState().verbose;
+    const startedAt = Date.now();
 
-    const { data, width, height, channels } = await backend.readRaw(input);
+    const { data, width, height, channels, source } =
+      await backend.readRaw(input);
+
+    const decodedAt = Date.now();
 
     const runs = identifierService.identifyBorders({
       data,
@@ -69,6 +93,20 @@ class CropService {
     });
 
     const bounds = identifierService.findPhotoBounds({ runs });
+
+    if (verbose) {
+      cropStoreActions.recordDiagnostic({
+        file: path.basename(input),
+        lines: [
+          `source    ${width}x${height}${source ? ` · ${source}` : ''}`,
+          `decoded   ${data.length} bytes · ${channels} channels · ${decodedAt - startedAt}ms`,
+          `borders   ${runs.length} run${runs.length === 1 ? '' : 's'}${formatRuns(runs)}`,
+          bounds
+            ? `bounds    rows ${bounds.top}-${bounds.bottom} · height ${bounds.bottom - bounds.top}`
+            : 'bounds    none — needs two border runs at least 200px apart',
+        ],
+      });
+    }
 
     if (!bounds) {
       throw new Error('could not detect photo borders');

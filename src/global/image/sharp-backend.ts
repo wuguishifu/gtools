@@ -20,16 +20,18 @@ export async function loadSharpBackend(): Promise<ImageBackend> {
     description: `sharp ${sharp.versions.sharp} (libvips ${vips})`,
 
     async readRaw(input) {
-      const { data, info } = await sharp(input)
-        .removeAlpha()
-        .raw()
-        .toBuffer({ resolveWithObject: true });
+      const image = sharp(input);
+      const [meta, { data, info }] = await Promise.all([
+        image.metadata(),
+        image.clone().removeAlpha().raw().toBuffer({ resolveWithObject: true }),
+      ]);
 
       return {
         data,
         width: info.width,
         height: info.height,
         channels: info.channels,
+        source: `${meta.depth} ${meta.channels}-band ${meta.space}`,
       };
     },
 

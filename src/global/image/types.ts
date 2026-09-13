@@ -5,6 +5,7 @@ export type RawImage = {
   width: number;
   height: number;
   channels: number;
+  source?: string;
 };
 
 export type ExtractRegion = {

@@ -19,6 +19,9 @@ export function CropProgress() {
     failures,
     startedAt,
     finishedAt,
+    verbose,
+    backend,
+    diagnostics,
   } = useCropStore();
 
   const { stdout } = useStdout();
@@ -44,6 +47,13 @@ export function CropProgress() {
           </>
         )}
       </Box>
+
+      {verbose && backend && (
+        <Box marginTop={1} gap={1}>
+          <Text dimColor>backend</Text>
+          <Text dimColor>{backend}</Text>
+        </Box>
+      )}
 
       <Box marginTop={1} gap={1}>
         <StatusIcon done={done} failed={failures.length > 0} />
@@ -82,6 +92,28 @@ export function CropProgress() {
             <Text color="red">{`✖ ${failures.length}`}</Text>
           )}
           <Text dimColor>{formatDuration(elapsed)}</Text>
+        </Box>
+      )}
+
+      {verbose && done && diagnostics.length > 0 && (
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold dimColor>
+            details
+          </Text>
+          {diagnostics.map((diagnostic) => (
+            <Box key={diagnostic.file} flexDirection="column" marginTop={1}>
+              <Box marginLeft={2}>
+                <Text>{diagnostic.file}</Text>
+              </Box>
+              {diagnostic.lines.map((line) => (
+                <Box key={line} marginLeft={4}>
+                  <Text dimColor wrap="truncate-end">
+                    {line}
+                  </Text>
+                </Box>
+              ))}
+            </Box>
+          ))}
         </Box>
       )}
 
