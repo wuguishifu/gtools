@@ -31,17 +31,16 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: bump version
         id: version
-        run: |
-          ./scripts/versioning/version-bump.sh \
-            ${{ inputs.version-bump-type }}
+        uses: wuguishifu/version-bump-workflow@v1
+        with:
+          bump-type: ${{ inputs.version-bump-type }}
 
   build:
     needs: version
@@ -80,9 +79,9 @@ jobs:
         run: pnpm i --frozen-lockfile
 
       - name: update package version
-        run: |
-          ./scripts/versioning/set-package-version.sh \
-            ${{ needs.version.outputs.version }}
+        uses: wuguishifu/version-bump-workflow/set-package-version@v1
+        with:
+          version: ${{ needs.version.outputs.version }}
 
       - name: compile binary
         run: |
@@ -135,9 +134,9 @@ jobs:
         run: pnpm typecheck
 
       - name: update package version
-        run: |
-          ./scripts/versioning/set-package-version.sh \
-            ${{ needs.version.outputs.version }}
+        uses: wuguishifu/version-bump-workflow/set-package-version@v1
+        with:
+          version: ${{ needs.version.outputs.version }}
 
       - name: build
         run: pnpm build
@@ -171,8 +170,8 @@ jobs:
       - name: publish binaries to github release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.version.outputs.version }}
-          name: gtools v${{ needs.version.outputs.version }}
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: gtools ${{ needs.version.outputs.tag }}
           files: artifacts/*
           generate_release_notes: true
           draft: false
