@@ -2,6 +2,12 @@ import { createStore, useStore } from '@/global/store/store';
 
 export type DiffMode = 'report' | 'dry-run' | 'apply';
 
+export type DiffOptions = {
+  mode: DiffMode;
+  caseInsensitive: boolean;
+  includeHidden: boolean;
+};
+
 export type DiffFile = {
   path: string;
   size: number;
@@ -20,8 +26,7 @@ export type CopyFailure = {
 
 type DiffStoreProps = {
   status: 'scanning' | 'copying' | 'done';
-  mode: DiffMode;
-  caseInsensitive: boolean;
+  options: DiffOptions;
   left?: DiffSide;
   right?: DiffSide;
   shared: number;
@@ -36,8 +41,7 @@ type DiffStoreProps = {
 
 const initialState: DiffStoreProps = {
   status: 'scanning',
-  mode: 'report',
-  caseInsensitive: false,
+  options: { mode: 'report', caseInsensitive: false, includeHidden: false },
   shared: 0,
   totalBytes: 0,
   copiedBytes: 0,
@@ -48,13 +52,8 @@ const initialState: DiffStoreProps = {
 export const diffStore = createStore<DiffStoreProps>(initialState);
 
 export const diffStoreActions = {
-  start: (mode: DiffMode, caseInsensitive: boolean) =>
-    diffStore.setState({
-      status: 'scanning',
-      mode,
-      caseInsensitive,
-      startedAt: Date.now(),
-    }),
+  start: (options: DiffOptions) =>
+    diffStore.setState({ status: 'scanning', options, startedAt: Date.now() }),
   setResult: (left: DiffSide, right: DiffSide, shared: number) =>
     diffStore.setState({ left, right, shared }),
   startCopying: (totalBytes: number) =>

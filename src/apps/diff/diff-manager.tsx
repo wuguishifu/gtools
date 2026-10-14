@@ -4,29 +4,23 @@ import { useEffect, useRef } from 'react';
 
 import { DiffReport } from './diff-report';
 import { diffService } from './lib/diff-service';
-import { DiffMode, diffStore } from './lib/diff-store';
+import { DiffOptions, diffStore } from './lib/diff-store';
 
 type DiffManagerProps = {
   left: string;
   right: string;
-  mode: DiffMode;
-  caseInsensitive: boolean;
+  options: DiffOptions;
 };
 
-export function DiffManager({
-  left,
-  right,
-  mode,
-  caseInsensitive,
-}: DiffManagerProps) {
+export function DiffManager({ left, right, options }: DiffManagerProps) {
   const { exit } = useApp();
-  const argsRef = useRef({ left, right, mode, caseInsensitive });
+  const argsRef = useRef({ left, right, options });
 
   useEffect(() => {
-    const { left, right, mode, caseInsensitive } = argsRef.current;
+    const { left, right, options } = argsRef.current;
 
     diffService
-      .diff(left, right, { mode, caseInsensitive })
+      .diff(left, right, options)
       .then(() => {
         if (diffStore.getState().failures.length > 0) process.exitCode = 1;
         exit();

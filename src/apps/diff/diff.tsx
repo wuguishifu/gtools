@@ -21,6 +21,10 @@ export const diff = defineCommand((program) => {
       '-i, --case-insensitive',
       'treat file names that differ only in case as the same file',
     )
+    .option(
+      '--include-hidden, -H',
+      'include hidden files and directories (names starting with ".")',
+    )
     .action(
       (
         left: string,
@@ -29,6 +33,7 @@ export const diff = defineCommand((program) => {
           sync?: boolean;
           apply?: boolean;
           caseInsensitive?: boolean;
+          includeHidden?: boolean;
         },
         command: Command,
       ) => {
@@ -47,8 +52,11 @@ export const diff = defineCommand((program) => {
             <DiffManager
               left={left}
               right={right}
-              mode={mode}
-              caseInsensitive={options.caseInsensitive === true}
+              options={{
+                mode,
+                caseInsensitive: options.caseInsensitive === true,
+                includeHidden: options.includeHidden === true,
+              }}
             />
           </ErrorBoundaryProvider>,
         );

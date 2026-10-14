@@ -6,7 +6,12 @@ import { formatDuration } from '@/global/lib/format-duration';
 import { Box, Static, Text, useStdout } from 'ink';
 import { useMemo } from 'react';
 
-import { DiffFile, DiffMode, DiffSide, useDiffStore } from './lib/diff-store';
+import {
+  DiffFile,
+  DiffOptions,
+  DiffSide,
+  useDiffStore,
+} from './lib/diff-store';
 
 const MAX_LISTED_FAILURES = 8;
 
@@ -16,7 +21,7 @@ type ReportRow =
       key: string;
       left: DiffSide;
       right: DiffSide;
-      caseInsensitive: boolean;
+      options: DiffOptions;
     }
   | { kind: 'section'; key: string; side: DiffSide; target?: DiffSide }
   | { kind: 'file'; key: string; file: DiffFile };
@@ -33,16 +38,11 @@ function totalSize(files: DiffFile[]) {
  * The file listing can run to thousands of lines, so it is written once
  * through <Static> instead of being redrawn with every progress update.
  */
-function buildRows(
-  mode: DiffMode,
-  caseInsensitive: boolean,
-  left?: DiffSide,
-  right?: DiffSide,
-) {
+function buildRows(options: DiffOptions, left?: DiffSide, right?: DiffSide) {
   if (!left || !right) return [];
 
   const rows: ReportRow[] = [
-    { kind: 'header', key: 'header', left, right, caseInsensitive },
+    { kind: 'header', key: 'header', left, right, options },
   ];
 
   for (const [side, target] of [
@@ -55,7 +55,7 @@ function buildRows(
       kind: 'section',
       key: `section:${side.root}`,
       side,
-      target: mode === 'report' ? undefined : target,
+      target: options.mode === 'report' ? undefined : target,
     });
 
     for (const file of side.only) {
@@ -67,10 +67,10 @@ function buildRows(
 }
 
 export function DiffReport() {
-  const { status, mode, caseInsensitive, left, right } = useDiffStore();
+  const { status, options, left, right } = useDiffStore();
   const rows = useMemo(
-    () => buildRows(mode, caseInsensitive, left, right),
-    [mode, caseInsensitive, left, right],
+    () => buildRows(options, left, right),
+    [options, left, right],
   );
 
   return (
@@ -97,7 +97,12 @@ function Row({ row }: { row: ReportRow }) {
             {` ${row.left.label} `}
             <Text dimColor>↔</Text>
             {` ${row.right.label}`}
-            {row.caseInsensitive && <Text dimColor> · case-insensitive</Text>}
+            {row.options.caseInsensitive && (
+              <Text dimColor> · case-insensitive</Text>
+            )}
+            {row.options.includeHidden && (
+              <Text dimColor> · including hidden</Text>
+            )}
           </Text>
         </Box>
       );
@@ -135,7 +140,8 @@ function Scanning() {
 }
 
 function Footer() {
-  const { status, mode, left, right, shared } = useDiffStore();
+  const { status, options, left, right, shared } = useDiffStore();
+  const { mode } = options;
 
   if (!left || !right) return null;
 

@@ -1,10 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 
-import { DiffFile, DiffMode, DiffSide, diffStoreActions } from './diff-store';
+import {
+  DiffFile,
+  DiffOptions,
+  DiffSide,
+  diffStoreActions,
+} from './diff-store';
 
-// OS metadata files that are noise rather than content worth syncing.
-const IGNORED_FILES = new Set(['.DS_Store', 'Thumbs.db']);
+// OS metadata files that are noise rather than content worth syncing, so they
+// stay ignored even when hidden are included.
+const IGNORED_FILES = new Set(['.DS_Store', 'Thumbs.db', 'Icon?']);
 
 function isInside(parent: string, child: string) {
   const relative = path.relative(parent, child);
@@ -42,9 +48,15 @@ type Listing = {
 
 /**
  * Lists every regular file and directory under `root`. Symlinks are skipped
- * rather than followed, so a link cycle can't trap the walk.
+ * rather than followed, so a link cycle can't trap the walk. Unless hidden
+ * files are included, hidden directories are skipped along with everything in
+ * them.
  */
-async function listFiles(root: string, toKey: MatchKey): Promise<Listing> {
+async function listFiles(
+  root: string,
+  toKey: MatchKey,
+  includeHidden: boolean,
+): Promise<Listing> {
   const files = new Map<string, string[]>();
   let fileCount = 0;
   const dirs = new Map<string, string>();
@@ -58,6 +70,7 @@ async function listFiles(root: string, toKey: MatchKey): Promise<Listing> {
 
     for (const entry of entries) {
       if (IGNORED_FILES.has(entry.name)) continue;
+      if (!includeHidden && entry.name.startsWith('.')) continue;
 
       const child = path.join(relative, entry.name);
 
@@ -139,12 +152,8 @@ type CopyJob = {
 };
 
 class DiffService {
-  public async diff(
-    leftPath: string,
-    rightPath: string,
-    options: { mode: DiffMode; caseInsensitive: boolean },
-  ) {
-    const { mode, caseInsensitive } = options;
+  public async diff(leftPath: string, rightPath: string, options: DiffOptions) {
+    const { mode, caseInsensitive, includeHidden } = options;
     const toKey = caseInsensitive ? caseInsensitiveKey : exactKey;
     const leftRoot = path.resolve(leftPath);
     const rightRoot = path.resolve(rightPath);
@@ -156,11 +165,11 @@ class DiffService {
       throw new Error('directories must not be the same or nested');
     }
 
-    diffStoreActions.start(mode, caseInsensitive);
+    diffStoreActions.start(options);
 
     const [leftListing, rightListing] = await Promise.all([
-      listFiles(leftRoot, toKey),
-      listFiles(rightRoot, toKey),
+      listFiles(leftRoot, toKey, includeHidden),
+      listFiles(rightRoot, toKey, includeHidden),
     ]);
 
     const left: DiffSide = {
