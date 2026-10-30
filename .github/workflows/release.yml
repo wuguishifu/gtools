@@ -133,6 +133,9 @@ jobs:
       - name: typecheck
         run: pnpm typecheck
 
+      - name: test
+        run: pnpm test
+
       - name: update package version
         uses: wuguishifu/version-bump-workflow/set-package-version@v1
         with:

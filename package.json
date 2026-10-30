@@ -28,7 +28,8 @@
     "format": "prettier --write .",
     "prepare": "husky || true",
     "build:binary": "./scripts/build/binary.sh",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "commander": "^15.0.0",
