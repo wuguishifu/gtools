@@ -9,8 +9,9 @@ import {
 } from './diff-store';
 
 // OS metadata files that are noise rather than content worth syncing, so they
-// stay ignored even when hidden are included.
-const IGNORED_FILES = new Set(['.DS_Store', 'Thumbs.db', 'Icon?']);
+// stay ignored even when hidden are included. macOS names custom folder icon
+// files "Icon\r"; `ls` displays the carriage return as "?".
+const IGNORED_FILES = new Set(['.DS_Store', 'Thumbs.db', 'Icon\r']);
 
 function isInside(parent: string, child: string) {
   const relative = path.relative(parent, child);
